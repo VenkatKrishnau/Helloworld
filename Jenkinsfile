@@ -16,9 +16,49 @@ pipeline {
             }
         }
         
+        stage('Setup Tools') {
+            steps {
+                sh '''
+                    # Install Java 17 if not available
+                    if ! command -v java &> /dev/null || ! java -version 2>&1 | grep -q "17"; then
+                        echo "Installing Java 17..."
+                        sudo apt-get update -qq
+                        sudo apt-get install -y openjdk-17-jdk || echo "Java 17 installation may require root"
+                        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 || export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+                        export PATH=$JAVA_HOME/bin:$PATH
+                    fi
+                    
+                    # Install Maven if not available
+                    if ! command -v mvn &> /dev/null; then
+                        echo "Installing Maven..."
+                        sudo apt-get install -y maven || echo "Maven installation may require root"
+                    fi
+                    
+                    # Verify installations
+                    echo "Java version:"
+                    java -version 2>&1 || echo "Java not found"
+                    echo "Maven version:"
+                    mvn -version 2>&1 || echo "Maven not found"
+                '''
+            }
+        }
+        
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh '''
+                    # Use system Maven or try to find it
+                    if command -v mvn &> /dev/null; then
+                        mvn clean package
+                    elif [ -f /usr/bin/mvn ]; then
+                        /usr/bin/mvn clean package
+                    else
+                        echo "Maven not found. Installing..."
+                        # Try to download and use Maven wrapper or install
+                        curl -s https://archive.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz | tar -xz
+                        export PATH=$PWD/apache-maven-3.9.5/bin:$PATH
+                        mvn clean package
+                    fi
+                '''
             }
         }
         
