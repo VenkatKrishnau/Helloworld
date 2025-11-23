@@ -29,20 +29,23 @@ pipeline {
                         echo "Java not found in PATH"
                     fi
                     
-                    # Download and setup Maven if not available
+                    # Download and setup Maven if not available (NO SUDO - using workspace)
                     if ! command -v mvn &> /dev/null; then
                         echo "Maven not found. Downloading Maven 3.9.5..."
-                        cd /tmp
+                        cd ${WORKSPACE}
                         curl -L -o maven.tar.gz https://archive.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz
                         tar -xzf maven.tar.gz
-                        export PATH=/tmp/apache-maven-3.9.5/bin:$PATH
-                        export MAVEN_HOME=/tmp/apache-maven-3.9.5
-                        echo "Maven downloaded and configured"
+                        chmod +x ${WORKSPACE}/apache-maven-3.9.5/bin/mvn
+                        echo "Maven downloaded to ${WORKSPACE}/apache-maven-3.9.5"
                     fi
                     
                     # Verify Maven
-                    echo "Maven version:"
-                    mvn -version 2>&1 | head -3
+                    if [ -f ${WORKSPACE}/apache-maven-3.9.5/bin/mvn ]; then
+                        echo "Maven version:"
+                        ${WORKSPACE}/apache-maven-3.9.5/bin/mvn -version 2>&1 | head -3
+                    else
+                        echo "Maven still not available"
+                    fi
                 '''
             }
         }
@@ -50,14 +53,17 @@ pipeline {
         stage('Build') {
             steps {
                 sh '''
-                    # Ensure Maven is in PATH
-                    if [ -d /tmp/apache-maven-3.9.5 ]; then
-                        export PATH=/tmp/apache-maven-3.9.5/bin:$PATH
-                        export MAVEN_HOME=/tmp/apache-maven-3.9.5
+                    # Use Maven from workspace if downloaded, otherwise try system Maven
+                    if [ -f ${WORKSPACE}/apache-maven-3.9.5/bin/mvn ]; then
+                        echo "Using downloaded Maven..."
+                        ${WORKSPACE}/apache-maven-3.9.5/bin/mvn clean package -DskipTests
+                    elif command -v mvn &> /dev/null; then
+                        echo "Using system Maven..."
+                        mvn clean package -DskipTests
+                    else
+                        echo "ERROR: Maven not found!"
+                        exit 1
                     fi
-                    
-                    # Build the application
-                    mvn clean package -DskipTests
                 '''
             }
         }
