@@ -1,10 +1,12 @@
 pipeline {
     agent any
     
-    tools {
-        maven 'Maven-3.9'
-        jdk 'JDK-17'
-    }
+    // Tools section removed - using system Java/Maven
+    // To use configured tools, add:
+    // tools {
+    //     maven 'Maven-3.9'
+    //     jdk 'JDK-17'
+    // }
     
     stages {
         stage('Checkout') {
