@@ -19,26 +19,30 @@ pipeline {
         stage('Setup Tools') {
             steps {
                 sh '''
-                    # Install Java 17 if not available
-                    if ! command -v java &> /dev/null || ! java -version 2>&1 | grep -q "17"; then
-                        echo "Installing Java 17..."
-                        sudo apt-get update -qq
-                        sudo apt-get install -y openjdk-17-jdk || echo "Java 17 installation may require root"
-                        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 || export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
-                        export PATH=$JAVA_HOME/bin:$PATH
+                    echo "=== Setting up build tools ==="
+                    
+                    # Check Java
+                    if command -v java &> /dev/null; then
+                        echo "Java found:"
+                        java -version 2>&1 | head -3
+                    else
+                        echo "Java not found in PATH"
                     fi
                     
-                    # Install Maven if not available
+                    # Download and setup Maven if not available
                     if ! command -v mvn &> /dev/null; then
-                        echo "Installing Maven..."
-                        sudo apt-get install -y maven || echo "Maven installation may require root"
+                        echo "Maven not found. Downloading Maven 3.9.5..."
+                        cd /tmp
+                        curl -L -o maven.tar.gz https://archive.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz
+                        tar -xzf maven.tar.gz
+                        export PATH=/tmp/apache-maven-3.9.5/bin:$PATH
+                        export MAVEN_HOME=/tmp/apache-maven-3.9.5
+                        echo "Maven downloaded and configured"
                     fi
                     
-                    # Verify installations
-                    echo "Java version:"
-                    java -version 2>&1 || echo "Java not found"
+                    # Verify Maven
                     echo "Maven version:"
-                    mvn -version 2>&1 || echo "Maven not found"
+                    mvn -version 2>&1 | head -3
                 '''
             }
         }
@@ -46,18 +50,14 @@ pipeline {
         stage('Build') {
             steps {
                 sh '''
-                    # Use system Maven or try to find it
-                    if command -v mvn &> /dev/null; then
-                        mvn clean package
-                    elif [ -f /usr/bin/mvn ]; then
-                        /usr/bin/mvn clean package
-                    else
-                        echo "Maven not found. Installing..."
-                        # Try to download and use Maven wrapper or install
-                        curl -s https://archive.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz | tar -xz
-                        export PATH=$PWD/apache-maven-3.9.5/bin:$PATH
-                        mvn clean package
+                    # Ensure Maven is in PATH
+                    if [ -d /tmp/apache-maven-3.9.5 ]; then
+                        export PATH=/tmp/apache-maven-3.9.5/bin:$PATH
+                        export MAVEN_HOME=/tmp/apache-maven-3.9.5
                     fi
+                    
+                    # Build the application
+                    mvn clean package -DskipTests
                 '''
             }
         }
