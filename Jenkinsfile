@@ -82,8 +82,8 @@ pipeline {
             steps {
                 sh '''
                     sleep 3
-                    curl -f http://localhost:8080/ || exit 1
-                    curl -f http://localhost:8080/health || exit 1
+                    curl -f http://localhost:8081/ || exit 1
+                    curl -f http://localhost:8081/health || exit 1
                 '''
             }
         }
