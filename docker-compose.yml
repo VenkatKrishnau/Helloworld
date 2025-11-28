@@ -1,0 +1,15 @@
+# Docker Compose file for local development (optional)
+version: '3.8'
+
+services:
+  helloworld-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helloworld-app
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+

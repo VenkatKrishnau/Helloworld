@@ -1,0 +1,13 @@
+# Ignore files that shouldn't be in Docker image
+.git
+.gitignore
+README.md
+*.md
+Jenkinsfile
+.vscode
+.idea
+*.iml
+target/classes
+target/test-classes
+src/
+

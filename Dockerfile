@@ -1,24 +1,14 @@
-FROM jenkins/jenkins:lts
+# Dockerfile for Spring Boot HelloWorld Application
+FROM openjdk:17-jdk-slim
 
-USER root
+# Set working directory
+WORKDIR /app
 
-# Install JDK 17
-RUN apt-get update && \
-    apt-get install -y openjdk-17-jdk && \
-    update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1 && \
-    update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+# Copy the JAR file
+COPY target/helloworld-1.0.0.jar app.jar
 
-# Install Maven 3.9.5
-RUN curl -L https://archive.apache.org/dist/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz -o /tmp/maven.tar.gz && \
-    tar -xzf /tmp/maven.tar.gz -C /opt && \
-    ln -s /opt/apache-maven-3.9.5 /opt/maven && \
-    rm /tmp/maven.tar.gz
+# Expose port 8081
+EXPOSE 8081
 
-# Set environment variables
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-ENV MAVEN_HOME=/opt/maven
-ENV PATH=$MAVEN_HOME/bin:$PATH
-
-# Switch back to jenkins user
-USER jenkins
-
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -68,12 +68,41 @@ pipeline {
             }
         }
         
-        stage('Run') {
+        stage('Build Docker Image') {
             steps {
                 sh '''
-                    pkill -f helloworld || true
-                    nohup java -jar target/helloworld-1.0.0.jar > app.log 2>&1 &
-                    sleep 5
+                    echo "=== Building Docker Image ==="
+                    docker build -t helloworld-app:latest .
+                    docker images | grep helloworld-app
+                '''
+            }
+        }
+        
+        stage('Stop Old Container') {
+            steps {
+                sh '''
+                    echo "=== Stopping Old Container (if exists) ==="
+                    docker stop helloworld-app || true
+                    docker rm helloworld-app || true
+                '''
+            }
+        }
+        
+        stage('Run Container') {
+            steps {
+                sh '''
+                    echo "=== Starting Application Container ==="
+                    docker run -d \
+                        --name helloworld-app \
+                        -p 8081:8081 \
+                        --restart unless-stopped \
+                        helloworld-app:latest
+                    
+                    echo "Waiting for application to start..."
+                    sleep 10
+                    
+                    echo "Container status:"
+                    docker ps | grep helloworld-app
                 '''
             }
         }
@@ -81,9 +110,14 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                    sleep 3
+                    echo "=== Testing Application ==="
+                    sleep 5
+                    
+                    # Test from host (Jenkins container can access host Docker)
                     curl -f http://localhost:8081/ || exit 1
                     curl -f http://localhost:8081/health || exit 1
+                    
+                    echo "✅ Application is running and responding!"
                 '''
             }
         }
@@ -91,7 +125,14 @@ pipeline {
     
     post {
         always {
-            sh 'cat app.log || true'
+            sh '''
+                echo "=== Container Logs ==="
+                docker logs --tail 50 helloworld-app || echo "Container not found or not running"
+                
+                echo ""
+                echo "=== Container Status ==="
+                docker ps -a | grep helloworld-app || echo "No helloworld-app container found"
+            '''
         }
     }
 }
